@@ -1,0 +1,45 @@
+{
+ "api_calls": 113,
+ "stats": {
+  "Redo of Healer": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 92
+  },
+  "Sword Art Online": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 120
+  },
+  "Neon Genesis Evangelion": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 109
+  },
+  "Akame ga Kill!": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 112
+  },
+  "Gurren Lagann": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 128
+  },
+  "My Hero Academia": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 103
+  },
+  "Re:ZERO": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 128
+  },
+  "Cable Girls": {
+   "queries": 6,
+   "posts": 8,
+   "comments": 128
+  }
+ }
+}
