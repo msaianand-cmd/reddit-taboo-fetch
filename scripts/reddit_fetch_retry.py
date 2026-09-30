@@ -213,9 +213,32 @@ def out_path(row):
         return os.path.join(RAWDIR, f"r{row['rank']}_{slug}.json")
     return os.path.join(RAWDIR, slug + '.json')
 
+DONE_FILE = os.path.join(SWEEP, 'retry_done.json')
+
+def retry_done_set():
+    """Ranks already (re)fetched by the retry. NOTE: output files for
+    kind=nonascii/sample already exist in the repo from the original batch,
+    so file existence alone is NOT a valid resume signal -- it caused the
+    2026-09-30 run to skip all 140 overwrite-kind titles. A rank counts as
+    done only if recorded here or its pack was written by this retry."""
+    done = set()
+    if os.path.exists(DONE_FILE):
+        done.update(json.load(open(DONE_FILE)))
+    return done
+
 def main():
     rows = list(csv.DictReader(open(os.path.join(BASE, 'retry_list.csv'), encoding='utf-8')))
-    todo = [r for r in rows if not os.path.exists(out_path(r))]
+    done_ranks = retry_done_set()
+    # also honor packs written by an earlier retry run that predates DONE_FILE
+    for r in rows:
+        p = out_path(r)
+        if os.path.exists(p):
+            try:
+                if json.load(open(p, encoding='utf-8')).get('method') == 'phase1-retry':
+                    done_ranks.add(int(r['rank']))
+            except Exception:
+                pass
+    todo = [r for r in rows if int(r['rank']) not in done_ranks]
     print(f'retry list {len(rows)}, {len(todo)} to fetch', flush=True)
     t0 = time.time()
     BUDGET = float(os.environ.get('TIME_BUDGET', '2700'))
@@ -235,11 +258,13 @@ def main():
             nc = sum(len(p['comments']) for p in posts)
             print(f"[r{r['rank']}] {r['primaryTitle'][:45]}: {len(posts)} posts, {nc} comments",
                   flush=True)
+            done_ranks.add(int(r['rank']))
+            json.dump(sorted(done_ranks), open(DONE_FILE, 'w'))
             done += 1
         except Exception as e:
             print(f"  ERROR r{r['rank']} {r['primaryTitle']!r}: {e}", flush=True)
-    remaining = [r for r in rows if not os.path.exists(out_path(r))]
-    prog = {'completed_ranks': sorted(int(r['rank']) for r in rows if os.path.exists(out_path(r))),
+    remaining = [r for r in rows if int(r['rank']) not in done_ranks]
+    prog = {'completed_ranks': sorted(done_ranks),
             'remaining': len(remaining), 'api_calls': API_CALLS}
     json.dump(prog, open(os.path.join(SWEEP, 'retry_progress.json'), 'w'))
     if not remaining:
