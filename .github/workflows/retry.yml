@@ -1,0 +1,37 @@
+name: reddit-retry
+# Targeted retry of weak/missing Reddit packs (phase1-retry): 58 missing ranks,
+# 120 non-ASCII zero-post packs (accent-gate fix), 20 obscure validation samples.
+# Triggered manually via workflow_dispatch only. Resumable via retry_list.csv.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: reddit-retry
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch retry batch
+        env:
+          REDDIT_CID: ${{ secrets.REDDIT_CID }}
+          REDDIT_SECRET: ${{ secrets.REDDIT_SECRET }}
+          REDDIT_USER: ${{ secrets.REDDIT_USER }}
+          REDDIT_PASS: ${{ secrets.REDDIT_PASS }}
+          TIME_BUDGET: '2700'
+        run: python3 scripts/reddit_fetch_retry.py
+      - name: Commit and push results
+        run: |
+          set -e
+          git config user.name "reddit-fetch-bot"
+          git config user.email "reddit-fetch-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "retry batch $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4 5 6; do
+            if git pull --rebase origin main && git push origin main; then break; fi
+            echo "push failed, retry $i"; sleep 20
+          done
